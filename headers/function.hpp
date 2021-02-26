@@ -5,7 +5,7 @@
 #include <functional>
 
 using Output = double;
-using Input = std::vector<double>;
+using Input = double; // std::vector<double>;
 
 using Function = std::function<Output(const Input&)>;
 

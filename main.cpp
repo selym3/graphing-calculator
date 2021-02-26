@@ -3,6 +3,14 @@
 
 #include <SFML/Graphics.hpp>
 
+/*
+
+    Equation e = [](auto x) { return x[0]; };
+
+    window.draw(equation);
+
+*/
+
 /////////////
 // GLOBALS //
 /////////////
@@ -13,27 +21,47 @@ sf::RenderWindow window {
     sf::Style::None
 };
 
+#include <cmath>
+
+// Function f = [](auto x) { return x; };
+Function f = [](double x) {
+    auto xx = std::pow(x, x);
+    auto x2 = std::pow(2, xx - M_PI / 2.0);
+
+    return std::abs(
+        std::sin(xx) /
+        x2 /
+        M_PI
+    );
+};
+
+double samples = 0.01;
+double spacing = 6;
+
 bool lastMousePress;
 sf::Vector2i pan;
-// sf::Vector2f pan;
+
+sf::Vector2f rectPos; // <-- no real use except for testing
 
 //////////////////////
 // FUNCTION HEADERS //
 //////////////////////
 
 sf::Vector2f getMouse();
-void zoomRelative(float zoom);
+void zoomAbout(float zoom, sf::Vector2i around);
+void resetView();
 
 void handleEvent(const sf::Event& event);
 void update();
 void draw();
 
+void drawGraph();
+void drawAxes();
+void drawTicks(int tickSize = 3);
+
 int main(int argc, char **argv)
 {
-    sf::View view = window.getView();
-    view.setCenter({ 0, 0 });
-
-    window.setView(view);
+    resetView();
 
     while (window.isOpen()) {    
         
@@ -55,6 +83,18 @@ int main(int argc, char **argv)
 // FUNCTION DEFS //
 ///////////////////
 
+void resetView()
+{
+    sf::View view = window.getDefaultView();
+    view.setCenter({ 0, 0 });
+    view.setSize({ 
+        float(1 * window.getSize().x), 
+        float(1 * window.getSize().y) 
+    });
+    window.setView(view);
+}
+
+
 sf::Vector2f getMouse()
 {
     return window.mapPixelToCoords(
@@ -62,16 +102,15 @@ sf::Vector2f getMouse()
     );
 }
 
-void zoomRelative(float zoom)
+void zoomAbout(float zoom, sf::Vector2i around)
 {
     sf::View view = window.getView();
 
-    auto mouse = getMouse();
+    auto before = window.mapPixelToCoords(around);
     view.zoom(zoom);
     window.setView(view);
 
-    view.move(mouse - getMouse());
-
+    view.move(before - window.mapPixelToCoords(around));
     window.setView(view);
 }
 
@@ -87,19 +126,22 @@ void handleEvent(const sf::Event& event)
             window.close();
         }
         else if (event.key.code == sf::Keyboard::Q) {
-            zoomRelative(zoomIn);
+            zoomAbout(zoomIn, sf::Mouse::getPosition(window));
         }
         else if (event.key.code == sf::Keyboard::E) {
-            zoomRelative(zoomOut);
+            zoomAbout(zoomOut, sf::Mouse::getPosition(window));
         }
         else if (event.key.code == sf::Keyboard::Space) {
+            resetView();
+        }
+        else if (event.key.code == sf::Keyboard::M) {
             auto tmp = getMouse();
             std::cout << "[ " << tmp.x << ", " << tmp.y << " ]\n";
         }
     }
 
     else if (event.type == sf::Event::MouseWheelScrolled) {
-        zoomRelative(event.mouseWheelScroll.delta > 0 ? zoomOut : zoomIn); 
+        zoomAbout(event.mouseWheelScroll.delta > 0 ? zoomOut : zoomIn, sf::Mouse::getPosition(window)); 
     }
 }
 
@@ -123,6 +165,9 @@ void update()
         pan = newPan;
     }
 
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl))
+        rectPos = getMouse();
+
     window.setView(view);
     lastMousePress = mousePress;
 }
@@ -131,38 +176,105 @@ void draw()
 {
     window.clear(sf::Color::Black);
 
+    drawGraph();
+
+    drawTicks();
+    drawAxes();
 
     // Draw rectangle
+    // sf::RectangleShape rectangle( {50, 50} );
+    // rectangle.setPosition(rectPos);
+    // rectangle.setFillColor(sf::Color::Blue);
+    // window.draw(rectangle);
+    ///
 
-    sf::RectangleShape rectangle;
-    rectangle.setSize({ 100, 50 });
+    window.display();
+}
+
+void drawGraph()
+{
+    auto min = window.mapPixelToCoords({ 0, 0 });
+    auto max = window.mapPixelToCoords(static_cast<sf::Vector2i>(
+        window.getSize()
+    ));
+
+    std::vector<sf::Vertex> pointsA;
+    std::vector<sf::Vertex> pointsB;
+
+    auto color = sf::Color::White;
+
+    auto xDistance = samples * (max.x - min.x);
+    for (float i = 0; i < max.x; i += xDistance) {
+        pointsA.push_back(sf::Vertex({ i, -float(f(i)) }, color));
+    }
+    for (float i = 0; i > min.x; i -= xDistance) {
+        pointsB.push_back(sf::Vertex({ i, -float(f(i)) }, color));
+    }
+
+    window.draw(&pointsA[0], pointsA.size(), sf::LinesStrip);
+    window.draw(&pointsB[0], pointsB.size(), sf::LinesStrip);
+
+}
+
+void drawTicks(int tickSize) 
+{
+    // Calculate screen space
+    auto min = window.mapPixelToCoords({ 0, 0 });
+    auto max = window.mapPixelToCoords(static_cast<sf::Vector2i>(
+        window.getSize()
+    ));
+    auto range = (max - min);
+
+    // Draw ticks at interval from the origin
+    std::vector<sf::Vertex> ticks;
+
+    auto color = sf::Color::White;
+    auto tickPoint = window.mapPixelToCoords({ tickSize, tickSize });
+
+    auto offset = tickPoint.y - min.y;
     
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl))
-        rectangle.setPosition(getMouse());
+    auto xDistance = spacing;
+    for (float i = 0; i < max.x; i += xDistance) {
+        ticks.push_back(sf::Vertex({ i, +offset }, color));
+        ticks.push_back(sf::Vertex({ i, -offset }, color));
+    }
+    for (float i = 0; i > min.x; i -= xDistance) {
+        ticks.push_back(sf::Vertex({ i, +offset }, color));
+        ticks.push_back(sf::Vertex({ i, -offset }, color));
+    }
 
-    window.draw(rectangle);
+    offset = tickPoint.x - min.x;
+    auto yDistance = spacing;
+    for (float i = 0; i < max.y; i += yDistance) {
+        ticks.push_back(sf::Vertex({ +offset, i }, color));
+        ticks.push_back(sf::Vertex({ -offset, i }, color));
+    }
+    for (float i = 0; i > min.y; i -= yDistance) {
+        ticks.push_back(sf::Vertex({ +offset, i }, color));
+        ticks.push_back(sf::Vertex({ -offset, i }, color));
+    }
 
-    // Draw grid
+    window.draw(&ticks[0], ticks.size(), sf::Lines);
+}
 
-    int x = window.getSize().x;
-    int y = window.getSize().y;
-
+void drawAxes()
+{
+    //  make helper function
     auto topLeft = window.mapPixelToCoords({ 0, 0 });
-    auto bottomRight = window.mapPixelToCoords({ x, y });
+    auto bottomRight = window.mapPixelToCoords(static_cast<sf::Vector2i>(
+        window.getSize()
+    ));
+    /////
 
-    sf::Vertex xAxis[] = {
+    sf::Vertex axes[] = {
+        // x-axis
         sf::Vertex({ topLeft.x, 0 }),
-        sf::Vertex({ bottomRight.x, 0 })
-    };
+        sf::Vertex({ bottomRight.x, 0 }),
 
-    window.draw(xAxis, 2, sf::Lines);
-
-    sf::Vertex yAxis[] = {
+        // y-axis
         sf::Vertex({ 0, topLeft.y }),
         sf::Vertex({ 0, bottomRight.y })
     };
 
-    window.draw(yAxis, 2, sf::Lines);
-
-    window.display();
+    window.draw(axes, 4, sf::Lines);
 }
