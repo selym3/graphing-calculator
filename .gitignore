@@ -1,0 +1,5 @@
+bin
+.o
+.qtclang
+main
+.vscode
