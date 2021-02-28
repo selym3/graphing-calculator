@@ -23,20 +23,14 @@ sf::RenderWindow window {
 
 #include <cmath>
 
-// Function f = [](auto x) { return x; };
-Function f = [](double x) {
-    auto xx = std::pow(x, x);
-    auto x2 = std::pow(2, xx - M_PI / 2.0);
+Function f = [](auto x) { return std::sin(x); };
 
-    return std::abs(
-        std::sin(xx) /
-        x2 /
-        M_PI
-    );
+double samples = 1e-3;
+double spacing = M_PI / 3;
+sf::Vector2i initialSize {
+    10,
+    10
 };
-
-double samples = 0.01;
-double spacing = 6;
 
 bool lastMousePress;
 sf::Vector2i pan;
@@ -55,9 +49,9 @@ void handleEvent(const sf::Event& event);
 void update();
 void draw();
 
-void drawGraph();
+void drawFunction(const Function&);
 void drawAxes();
-void drawTicks(int tickSize = 3);
+void drawGraph();
 
 int main(int argc, char **argv)
 {
@@ -88,8 +82,7 @@ void resetView()
     sf::View view = window.getDefaultView();
     view.setCenter({ 0, 0 });
     view.setSize({ 
-        float(1 * window.getSize().x), 
-        float(1 * window.getSize().y) 
+        static_cast<sf::Vector2f>(initialSize)
     });
     window.setView(view);
 }
@@ -176,9 +169,9 @@ void draw()
 {
     window.clear(sf::Color::Black);
 
-    drawGraph();
+    drawFunction(f);
 
-    drawTicks();
+    drawGraph();
     drawAxes();
 
     // Draw rectangle
@@ -191,7 +184,7 @@ void draw()
     window.display();
 }
 
-void drawGraph()
+void drawFunction(const Function& function)
 {
     auto min = window.mapPixelToCoords({ 0, 0 });
     auto max = window.mapPixelToCoords(static_cast<sf::Vector2i>(
@@ -203,12 +196,12 @@ void drawGraph()
 
     auto color = sf::Color::White;
 
-    auto xDistance = samples * (max.x - min.x);
+    auto xDistance = samples;
     for (float i = 0; i < max.x; i += xDistance) {
-        pointsA.push_back(sf::Vertex({ i, -float(f(i)) }, color));
+        pointsA.push_back(sf::Vertex({ i, -float(function(i)) }, color));
     }
     for (float i = 0; i > min.x; i -= xDistance) {
-        pointsB.push_back(sf::Vertex({ i, -float(f(i)) }, color));
+        pointsB.push_back(sf::Vertex({ i, -float(function(i)) }, color));
     }
 
     window.draw(&pointsA[0], pointsA.size(), sf::LinesStrip);
@@ -216,42 +209,38 @@ void drawGraph()
 
 }
 
-void drawTicks(int tickSize) 
+void drawGraph() 
 {
     // Calculate screen space
     auto min = window.mapPixelToCoords({ 0, 0 });
     auto max = window.mapPixelToCoords(static_cast<sf::Vector2i>(
         window.getSize()
     ));
-    auto range = (max - min);
 
-    // Draw ticks at interval from the origin
+    // Draw all the axes in one draw call
     std::vector<sf::Vertex> ticks;
 
-    auto color = sf::Color::White;
-    auto tickPoint = window.mapPixelToCoords({ tickSize, tickSize });
+    auto color = sf::Color{ 55, 55, 55};
 
-    auto offset = tickPoint.y - min.y;
-    
+    auto offset = max.y;
     auto xDistance = spacing;
     for (float i = 0; i < max.x; i += xDistance) {
-        ticks.push_back(sf::Vertex({ i, +offset }, color));
-        ticks.push_back(sf::Vertex({ i, -offset }, color));
+        ticks.push_back(sf::Vertex({ i, min.y }, color));
+        ticks.push_back(sf::Vertex({ i, max.y }, color));
     }
     for (float i = 0; i > min.x; i -= xDistance) {
-        ticks.push_back(sf::Vertex({ i, +offset }, color));
-        ticks.push_back(sf::Vertex({ i, -offset }, color));
+        ticks.push_back(sf::Vertex({ i, min.y }, color));
+        ticks.push_back(sf::Vertex({ i, max.y }, color));
     }
 
-    offset = tickPoint.x - min.x;
     auto yDistance = spacing;
     for (float i = 0; i < max.y; i += yDistance) {
-        ticks.push_back(sf::Vertex({ +offset, i }, color));
-        ticks.push_back(sf::Vertex({ -offset, i }, color));
+        ticks.push_back(sf::Vertex({ min.x, i }, color));
+        ticks.push_back(sf::Vertex({ max.x, i }, color));
     }
     for (float i = 0; i > min.y; i -= yDistance) {
-        ticks.push_back(sf::Vertex({ +offset, i }, color));
-        ticks.push_back(sf::Vertex({ -offset, i }, color));
+        ticks.push_back(sf::Vertex({ min.x, i }, color));
+        ticks.push_back(sf::Vertex({ max.x, i }, color));
     }
 
     window.draw(&ticks[0], ticks.size(), sf::Lines);
@@ -260,20 +249,20 @@ void drawTicks(int tickSize)
 void drawAxes()
 {
     //  make helper function
-    auto topLeft = window.mapPixelToCoords({ 0, 0 });
-    auto bottomRight = window.mapPixelToCoords(static_cast<sf::Vector2i>(
+    auto min = window.mapPixelToCoords({ 0, 0 });
+    auto max = window.mapPixelToCoords(static_cast<sf::Vector2i>(
         window.getSize()
     ));
     /////
 
     sf::Vertex axes[] = {
         // x-axis
-        sf::Vertex({ topLeft.x, 0 }),
-        sf::Vertex({ bottomRight.x, 0 }),
+        sf::Vertex({ min.x, 0 }),
+        sf::Vertex({ max.x, 0 }),
 
         // y-axis
-        sf::Vertex({ 0, topLeft.y }),
-        sf::Vertex({ 0, bottomRight.y })
+        sf::Vertex({ 0, min.y }),
+        sf::Vertex({ 0, max.y })
     };
 
     window.draw(axes, 4, sf::Lines);
