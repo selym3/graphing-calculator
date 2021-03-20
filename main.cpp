@@ -1,5 +1,6 @@
 #include <iostream>
 #include "headers/function.hpp"
+#include "headers/font_load.hpp"
 
 #include <SFML/Graphics.hpp>
 
@@ -41,6 +42,7 @@ sf::Vector2f rectPos; // <-- no real use except for testing
 // FUNCTION HEADERS //
 //////////////////////
 
+bool mouseInScreen();
 sf::Vector2f getMouse();
 void zoomAbout(float zoom, sf::Vector2i around);
 void resetView();
@@ -76,6 +78,13 @@ int main(int argc, char **argv)
 ///////////////////
 // FUNCTION DEFS //
 ///////////////////
+
+bool mouseInScreen()
+{
+    auto mouse = sf::Mouse::getPosition(window);
+    auto size = window.getSize();
+    return mouse.x >= 0 && mouse.y >= 0 && mouse.x < size.x && mouse.y < size.y;
+}
 
 void resetView()
 {
@@ -169,10 +178,10 @@ void draw()
 {
     window.clear(sf::Color::Black);
 
-    drawFunction(f);
-
     drawGraph();
     drawAxes();
+
+    drawFunction(f);
 
     // Draw rectangle
     // sf::RectangleShape rectangle( {50, 50} );
@@ -196,6 +205,7 @@ void drawFunction(const Function& function)
 
     auto color = sf::Color::White;
 
+    // TODO: this needs to change dynamically with zoom
     auto xDistance = samples;
     for (float i = 0; i < max.x; i += xDistance) {
         pointsA.push_back(sf::Vertex({ i, -float(function(i)) }, color));
@@ -222,8 +232,8 @@ void drawGraph()
 
     auto color = sf::Color{ 55, 55, 55};
 
-    auto offset = max.y;
-    auto xDistance = spacing;
+    int xDistance = 1024 * (((max.x - min.x) / 12) / 1024); // spacing;
+    xDistance = xDistance > 1e-2 ? xDistance : spacing;
     for (float i = 0; i < max.x; i += xDistance) {
         ticks.push_back(sf::Vertex({ i, min.y }, color));
         ticks.push_back(sf::Vertex({ i, max.y }, color));
@@ -233,7 +243,7 @@ void drawGraph()
         ticks.push_back(sf::Vertex({ i, max.y }, color));
     }
 
-    auto yDistance = spacing;
+    auto yDistance =xDistance;// spacing;
     for (float i = 0; i < max.y; i += yDistance) {
         ticks.push_back(sf::Vertex({ min.x, i }, color));
         ticks.push_back(sf::Vertex({ max.x, i }, color));
