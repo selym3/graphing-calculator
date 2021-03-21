@@ -29,6 +29,15 @@ private:
     void draw();
 
     void drawAxes();
+
+
+    int boxes = 12;
+
+    double truncationFactor = 3.0;
+
+    double minSpacing = 1e-2;
+    double defaultSpacing = 3.14159 / 3;
+
     void drawGraph();
 
 public: 
@@ -36,14 +45,14 @@ public:
     Function function = [](auto x) { return x; };
 
 private:
-    double samples = 1e-3;
-    double spacing = 3.14159 / 3;
 
-    int boxes = 12;
+    double samplesPerBox = 25;
+
+    double getBoxSpacing() const;
 
     void drawFunction(const Function&);
 
-    std::tuple<sf::Vector2f, sf::Vector2f> getWindowBounds();
+    std::tuple<sf::Vector2f, sf::Vector2f> getWindowBounds() const;
 
 private:
     // Window & View

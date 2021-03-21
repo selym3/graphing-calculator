@@ -129,9 +129,8 @@ void Grapher::drawGraph()
 
     auto color = sf::Color{ 55, 55, 55 };
 
-    int xDistance = 1024 * (((max.x - min.x) / boxes) / 1024); 
-    xDistance = xDistance > 1e-2 ? xDistance : spacing;
-    
+    auto xDistance = getBoxSpacing();
+
     for (float i = 0; i < max.x; i += xDistance) {
         ticks.push_back(sf::Vertex({ i, min.y }, color));
         ticks.push_back(sf::Vertex({ i, max.y }, color));
@@ -185,11 +184,11 @@ void Grapher::drawFunction(const Function& f)
     auto color = sf::Color::White;
 
     // TODO: this needs to change dynamically with zoom
-    auto xDistance = samples;
-    for (float i = 0; i < max.x; i += xDistance) {
+    auto xDistance = getBoxSpacing() / samplesPerBox;
+    for (float i = 0; i < max.x + xDistance; i += xDistance) {
         pointsA.push_back(sf::Vertex({ i, -float(function(i)) }, color));
     }
-    for (float i = 0; i > min.x; i -= xDistance) {
+    for (float i = 0; i > min.x - xDistance; i -= xDistance) {
         pointsB.push_back(sf::Vertex({ i, -float(function(i)) }, color));
     }
 
@@ -197,7 +196,20 @@ void Grapher::drawFunction(const Function& f)
     window.draw(&pointsB[0], pointsB.size(), sf::LinesStrip);
 }
 
-std::tuple<sf::Vector2f, sf::Vector2f> Grapher::getWindowBounds()
+double Grapher::getBoxSpacing() const
+{
+    auto bounds = getWindowBounds();
+    auto min = std::get<0>(bounds), max = std::get<1>(bounds);
+
+    auto range = (max.x - min.x);
+    double distance = range / (double)boxes;
+
+    auto out = truncationFactor * int((1 + (distance / truncationFactor)));
+
+    return out;
+}
+
+std::tuple<sf::Vector2f, sf::Vector2f> Grapher::getWindowBounds() const
 {
     return std::tuple<sf::Vector2f, sf::Vector2f>{
         window.mapPixelToCoords({ 0, 0 }),
