@@ -8,3 +8,4 @@ Graphing and expression parsing program in C++
 * Fixed sample rate / spacing to be zoom sensitive
 * Improve how functions are graphed
 * Add text to graph
+* Add engine for parsing expressions
