@@ -5,13 +5,26 @@
 
 #include <SFML/Graphics.hpp>
 
-int main(void)
+#include "headers/parser/engine.hpp"
+
+Function getFunction(int argc, char **argv)
+{
+    
+    if (argc == 1) {
+        return [](auto x) { return std::sin(x); };
+    }
+
+    return Engine(argv[1]);
+
+}
+
+int main(int argc, char ** argv)
 {
     Grapher grapher {
         600, 600
     };
 
-    grapher.function = [](auto x) { return std::sin(x); };
+    grapher.function = getFunction(argc, argv);
 
     std::cout << "Graphing...\n";
 
